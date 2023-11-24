@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Snake Game in Leitstellenspiel
 // @namespace    www.leitstellenspiel.de
-// @version      0.9
+// @version      1.0
 // @description  Snake Game in Leitstellenspiel einfügen
 // @author       MissSobol
 // @match        https://www.leitstellenspiel.de/*
@@ -19,6 +19,7 @@
         var gridSize = 20;
         var count = 0;
         var score = 0;
+        var speed = 100; // Standardgeschwindigkeit (in Millisekunden)
 
         var snake = {
             x: gridSize * 4,
@@ -28,37 +29,63 @@
             cells: [],
             maxCells: 4
         };
-        var symbols = ['🔥', '🧯', '⛑️', '💊', '🩺', '🫀', '🛬'];
-        var emergencySymbols = ['🚒', '🚓', '🚑', '👮', '👮‍♀️', '👮‍♂️', '👮‍♂️', '👩‍⚕️', '👨‍⚕️', '👨‍🚒', '👩‍🚒'];
 
-        var getRandomPosition = function () {
+        function loadImage(url) {
+            var img = new Image();
+            img.src = url;
+            return img;
+        }
+
+        function getRandomPosition() {
             return Math.floor(Math.random() * (canvas.width / gridSize)) * gridSize;
-        };
+        }
 
-        var getRandomInt = function (min, max) {
+        function getRandomInt(min, max) {
             return Math.floor(Math.random() * (max - min)) + min;
+        }
+
+        function getRandomImage(array) {
+            return loadImage(array[getRandomInt(0, array.length)]);
+        }
+
+        var appleImages = [
+            'https://www.leitstellenspiel.de/images/fire_rot.png',
+            'https://www.leitstellenspiel.de/images/sawmill_rot.png',
+            'https://www.leitstellenspiel.de/images/oil_rot.png',
+            'https://www.leitstellenspiel.de/images/medicalstore_rot.png',
+            'https://www.leitstellenspiel.de/images/caraccident_rot.png'
+        ];
+
+        var getRandomAppleImage = function () {
+            return getRandomImage(appleImages);
         };
 
-        var getRandomSymbol = function (array) {
-            return array[getRandomInt(0, array.length)];
+        var emergencySymbols = [
+            'https://www.leitstellenspiel.de/images/vehicles/red_truck.png',
+            'https://www.leitstellenspiel.de/images/vehicles/green_car.png',
+            'https://www.leitstellenspiel.de/images/vehicles/red_boat_trailer.png',
+            'https://www.leitstellenspiel.de/images/vehicles/red_arff.png',
+            'https://www.leitstellenspiel.de/images/vehicles/red_rescue_stairs.png'
+        ];
+
+        var getRandomEmergencyImage = function () {
+            return getRandomImage(emergencySymbols);
         };
 
-        // Definition des Apfels außerhalb der loop-Funktion
         var apple = {
             x: getRandomPosition(),
             y: getRandomPosition(),
-            symbol: getRandomSymbol(symbols)
+            symbol: getRandomAppleImage()
         };
 
         function loop() {
             requestAnimationFrame(loop);
 
-            if (++count < 4) {
+            if (++count < speed / 10) {
                 return;
             }
 
             count = 0;
-            // Hintergrundfarbe des Canvas setzen
             context.fillStyle = 'black';
             context.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -83,23 +110,19 @@
                 snake.cells.pop();
             }
 
-            // Zeichne den Apfel
-            context.font = '20px Arial';
-            context.fillText(apple.symbol, apple.x, apple.y + gridSize);
+            context.drawImage(apple.symbol, apple.x, apple.y, gridSize, gridSize);
 
-            // Zeichne die Schlange
             snake.cells.forEach(function (cell, index) {
-                var symbol = getRandomSymbol(emergencySymbols);
-                context.fillText(symbol, cell.x, cell.y + gridSize);
+                var symbol = getRandomEmergencyImage();
+                context.drawImage(symbol, cell.x, cell.y, gridSize, gridSize);
 
                 if (cell.x === apple.x && cell.y === apple.y) {
                     snake.maxCells++;
 
                     apple.x = getRandomPosition();
                     apple.y = getRandomPosition();
-                    apple.symbol = getRandomSymbol(symbols);
+                    apple.symbol = getRandomAppleImage();
 
-                    // Erhöhe den Score beim Essen des Apfels
                     score += 1;
                 }
 
@@ -114,21 +137,18 @@
 
                         apple.x = getRandomPosition();
                         apple.y = getRandomPosition();
-                        apple.symbol = getRandomSymbol(symbols);
+                        apple.symbol = getRandomAppleImage();
 
-                        // Setze den Score zurück bei Kollision mit dem eigenen Körper
                         score = 0;
                     }
                 }
             });
 
-            // Zeige den Score im Canvas an
             context.fillStyle = 'white';
             context.font = '20px Arial';
             context.fillText('Score: ' + score, 10, 20);
         }
 
-        // Event-Listener für Tastatureingaben
         document.addEventListener('keydown', function (e) {
             if (e.which === 37 && snake.dx === 0) {
                 snake.dx = -gridSize;
@@ -145,30 +165,48 @@
             }
         });
 
-        // Setze Canvas-Dimensionen und starte das Spiel
+        // Erstelle den Schieberegler für die Geschwindigkeit
+        var speedSlider = document.createElement('input');
+        speedSlider.type = 'range';
+        speedSlider.min = '50'; // Minimale Geschwindigkeit
+        speedSlider.max = '200'; // Maximale Geschwindigkeit
+        speedSlider.step = '10'; // Schritte
+        speedSlider.value = speed.toString();
+        speedSlider.addEventListener('input', function () {
+            speed = parseInt(speedSlider.value);
+        });
+
+        // Füge den Schieberegler zur Lightbox hinzu
+        var speedLabel = document.createElement('label');
+        speedLabel.textContent = 'Speed:';
+        speedLabel.appendChild(speedSlider);
+
+        // Setze die Position des Schiebereglers unterhalb des Spielfelds
+        speedLabel.style.position = 'absolute';
+        speedLabel.style.bottom = '20px';
+        speedLabel.style.left = '50%';
+        speedLabel.style.transform = 'translateX(-50%)';
+
+        document.getElementById('snake-lightbox-content').appendChild(speedLabel);
+
         canvas.width = 400;
         canvas.height = 400;
         loop();
     }
 
-    // Funktion zum Schließen der Lightbox
     function closeLightbox() {
         var lightbox = document.getElementById('snake-lightbox');
         lightbox.parentNode.removeChild(lightbox);
-        // Aktiviere das Scrollen des Body-Elements, wenn die Lightbox geschlossen wird
         document.body.style.overflow = 'auto';
     }
 
-    // Füge einen Button zum Öffnen der Lightbox hinzu
+    // Erstelle den Button zum Aufrufen des Spiels
     var openLightboxButton = document.createElement('button');
-    openLightboxButton.textContent = 'Snake Game';
-    openLightboxButton.style.position = 'fixed';
-    openLightboxButton.style.top = '10px';
-    openLightboxButton.style.left = '10px';
-    openLightboxButton.style.zIndex = '9999';
+    openLightboxButton.textContent = 'S';
+    openLightboxButton.style.position = 'relative'; // Verwende relative Positionierung
+    openLightboxButton.className = 'btn btn-success btn-xs';
 
     openLightboxButton.addEventListener('click', function () {
-        // Erstelle ein div-Element für die Lightbox
         var lightbox = document.createElement('div');
         lightbox.id = 'snake-lightbox';
         lightbox.style.position = 'fixed';
@@ -179,7 +217,6 @@
         lightbox.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
         lightbox.style.zIndex = '10000';
 
-        // Erstelle ein div-Element für das Spiel
         var lightboxContent = document.createElement('div');
         lightboxContent.id = 'snake-lightbox-content';
         lightboxContent.style.position = 'absolute';
@@ -190,16 +227,13 @@
         lightboxContent.style.borderRadius = '10px';
         lightboxContent.style.backgroundColor = '#fff';
 
-        // Erstelle ein Canvas-Element für das Spiel
         var gameCanvas = document.createElement('canvas');
         gameCanvas.width = 400;
         gameCanvas.height = 400;
         gameCanvas.id = 'game';
 
-        // Füge das Canvas-Element zum Lightbox-Content hinzu
         lightboxContent.appendChild(gameCanvas);
 
-        // Erstelle ein Schließkreuz (X) zum Schließen der Lightbox
         var closeButton = document.createElement('button');
         closeButton.textContent = 'X';
         closeButton.style.position = 'absolute';
@@ -214,20 +248,17 @@
         closeButton.style.color = '#333';
         closeButton.addEventListener('click', closeLightbox);
 
-        // Füge das Schließkreuz und das Lightbox-Content-Element zur Lightbox hinzu
         lightboxContent.appendChild(closeButton);
         lightbox.appendChild(lightboxContent);
 
-        // Füge die Lightbox zur Seite hinzu
         document.body.appendChild(lightbox);
 
-        // Deaktiviere das Scrollen des Body-Elements, wenn die Lightbox geöffnet wird
         document.body.style.overflow = 'hidden';
 
-        // Öffne die Lightbox und rufe startSnakeGame() auf
         startSnakeGame();
     });
 
-    // Füge das Button-Element zur Seite hinzu
-    document.body.appendChild(openLightboxButton);
+    // Füge den Button neben die Social Media Buttons im Footer hinzu
+    var socialMediaLinks = document.querySelector('.social-media-links');
+    socialMediaLinks.appendChild(openLightboxButton);
 })();
